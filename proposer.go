@@ -49,11 +49,14 @@ func (proposer *ProposerImpl) CountUpBallotNumber() {
 func (proposer *ProposerImpl) TryUpdateValue() {
 	promiseIndex := -1
 	for i, promise := range proposer.promises {
-		// If proposer have promise with non-empty value, then some proposer was faster, and we should vote for its value
+		// If proposer have promise with non-empty value,
+		// then some proposer was faster, and we should vote for its value
 		if promise.acceptedProposal.value != nil {
 			// Also, chosen value should have max ballot number
-			// Note: this ballot numbers are not less than current ballot number, otherwise acceptor would not send promise
-			if promiseIndex == -1 || proposer.promises[promiseIndex].acceptedProposal.ballotNumber.Less(promise.ballotNumber) {
+			// Note: this ballot numbers are not less than current ballot number,
+			// otherwise acceptor would not send promise
+			if promiseIndex == -1 ||
+				proposer.promises[promiseIndex].acceptedProposal.ballotNumber.Less(promise.ballotNumber) {
 				promiseIndex = i
 			}
 		}
@@ -69,7 +72,7 @@ func (proposer *ProposerImpl) TryUpdateValue() {
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 type BallotNumber struct {
-	timestamp  uint // Now()
+	timestamp  uint
 	proposerID uint
 }
 
