@@ -6,10 +6,10 @@ import (
 	"testing"
 )
 
-func initProcessors(processorCount int) []*Processor {
+func initProcessors(network Network, processorCount int) []*Processor {
 	processors := make([]*Processor, 0)
 	for i := 0; i < processorCount; i++ {
-		processors = append(processors, NewProcessor())
+		processors = append(processors, NewProcessor(network))
 	}
 	for _, processor := range processors {
 		processor.AddAcceptors(processors)
@@ -57,8 +57,8 @@ func validate(proposed, decided chan interface{}) error {
 	return nil
 }
 
-func testPaxos(processorCount int) error {
-	processors := initProcessors(processorCount)
+func testPaxos(network Network, processorCount int) error {
+	processors := initProcessors(network, processorCount)
 
 	proposed := make(chan interface{}, processorCount)
 	decided := make(chan interface{}, processorCount)
@@ -69,16 +69,28 @@ func testPaxos(processorCount int) error {
 }
 
 func TestPaxosUnitTest(testing *testing.T) {
-	if ok := testPaxos(1); ok != nil {
+	if ok := testPaxos(new(SyncNetwork), 1); ok != nil {
 		testing.Errorf("UnitTest(): %s", ok.Error())
 	}
 }
 
-func TestPaxosStressTest(testing *testing.T) {
-	for _, processorCount := range []int{1, 2, 5, 10, 25} {
-		for i := 0; i < 100*processorCount; i++ {
-			if ok := testPaxos(processorCount); ok != nil {
-				testing.Errorf("StressTest(processorCount: %d): %s", processorCount, ok.Error())
+func TestPaxosSyncStressTest(testing *testing.T) {
+	for _, processorCount := range []int{1, 3, 5} {
+		for i := 0; i < 8; i++ {
+			if ok := testPaxos(new(SyncNetwork), processorCount); ok != nil {
+				testing.Errorf("StressTest(network: new(SyncNetwork), processorCount: %d): %s",
+					processorCount, ok.Error())
+			}
+		}
+	}
+}
+
+func TestPaxosAsyncStressTest(testing *testing.T) {
+	for _, processorCount := range []int{1, 3, 5} {
+		for i := 0; i < 8; i++ {
+			if ok := testPaxos(new(AsyncNetwork), processorCount); ok != nil {
+				testing.Errorf("StressTest(network: new(AsyncNetwork), processorCount: %d): %s",
+					processorCount, ok.Error())
 			}
 		}
 	}

@@ -19,4 +19,9 @@ func (network *SyncNetwork) Send(sender *Processor, receiver *Processor, message
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-var network = new(SyncNetwork)
+type AsyncNetwork struct {
+}
+
+func (network *AsyncNetwork) Send(sender *Processor, receiver *Processor, message Message) {
+	go receiver.Receive(sender, message)
+}

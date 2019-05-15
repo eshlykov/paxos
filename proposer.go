@@ -1,6 +1,10 @@
 package paxos
 
-import "sync"
+import (
+	"math/rand"
+	"sync"
+	"time"
+)
 
 type Proposer interface {
 	Prepare()
@@ -23,6 +27,8 @@ func (processor *Processor) Prepare() {
 	for _, acceptor := range processor.acceptors {
 		processor.Send(acceptor, Message{ballotNumber})
 	}
+
+	processor.Wait()
 }
 
 func (processor *Processor) Propose() {
@@ -31,6 +37,8 @@ func (processor *Processor) Propose() {
 	for _, promise := range promises {
 		processor.Send(promise.acceptor, Message{Proposal{ballotNumber, value}})
 	}
+
+	processor.Wait()
 }
 
 func (processor *Processor) OnPromise(promise Promise) {
@@ -113,6 +121,12 @@ func (proposer *ProposerImpl) AcceptCount() int {
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
+func (proposer *ProposerImpl) Wait() {
+	time.Sleep(time.Duration(RandomInRange(50, 100)) * time.Millisecond)
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
 type BallotNumber struct {
 	timestamp  uint
 	proposerID uint
@@ -144,4 +158,17 @@ type Proposal struct {
 
 func (first Proposal) Less(second Proposal) bool {
 	return first.ballotNumber.Less(second.ballotNumber)
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+var source = rand.NewSource(time.Now().UnixNano())
+var random = rand.New(source)
+var lock sync.Mutex
+
+func RandomInRange(low, high float64) float64 {
+	lock.Lock()
+	defer lock.Unlock()
+
+	return low + (high-low)*random.Float64()
 }
