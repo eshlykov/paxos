@@ -11,12 +11,12 @@ func (processor *Processor) Decide(value interface{}) interface{} {
 
 	for {
 		processor.Prepare()
-		if len(processor.promises) < quorumNumber {
+		if len(processor.Promises()) < quorumNumber {
 			continue
 		}
 
 		processor.Propose()
-		if processor.acceptCount >= quorumNumber {
+		if processor.AcceptCount() >= quorumNumber {
 			return processor.value
 		}
 	}

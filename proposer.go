@@ -18,20 +18,18 @@ type ProposerImpl struct {
 }
 
 func (processor *Processor) Prepare() {
-	processor.CountUpBallotNumber()
+	ballotNumber := processor.CountUpBallotNumber()
 
 	for _, acceptor := range processor.acceptors {
-		processor.Send(acceptor, Message{processor.ballotNumber})
+		processor.Send(acceptor, Message{ballotNumber})
 	}
 }
 
 func (processor *Processor) Propose() {
-	processor.TryUpdateValue()
-
-	promises := processor.Promises()
+	promises, ballotNumber, value := processor.TryUpdateValue()
 
 	for _, promise := range promises {
-		processor.Send(promise.acceptor, Message{Proposal{processor.ballotNumber, processor.value}})
+		processor.Send(promise.acceptor, Message{Proposal{ballotNumber, value}})
 	}
 }
 
@@ -41,16 +39,18 @@ func (proposer *ProposerImpl) AddAcceptors(acceptors []*Processor) {
 	proposer.acceptors = acceptors
 }
 
-func (proposer *ProposerImpl) CountUpBallotNumber() {
+func (proposer *ProposerImpl) CountUpBallotNumber() BallotNumber {
 	proposer.lockProposer.Lock()
 	defer proposer.lockProposer.Unlock()
 
 	proposer.ballotNumber = proposer.ballotNumber.Next()
 	proposer.promises = make([]Promise, 0, 0)
 	proposer.acceptCount = 0
+
+	return proposer.ballotNumber
 }
 
-func (proposer *ProposerImpl) TryUpdateValue() {
+func (proposer *ProposerImpl) TryUpdateValue() ([]Promise, BallotNumber, interface{}) {
 	proposer.lockProposer.Lock()
 	defer proposer.lockProposer.Unlock()
 
@@ -75,6 +75,8 @@ func (proposer *ProposerImpl) TryUpdateValue() {
 
 	// Otherwise, proposer will vote for its initial value
 	// Note: ballot number is not changed
+
+	return proposer.promises, proposer.ballotNumber, proposer.value
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -105,6 +107,13 @@ func (proposer *ProposerImpl) Promises() []Promise {
 	defer proposer.lockProposer.Unlock()
 
 	return proposer.promises
+}
+
+func (proposer *ProposerImpl) AcceptCount() int {
+	proposer.lockProposer.Lock()
+	defer proposer.lockProposer.Unlock()
+
+	return proposer.acceptCount
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
