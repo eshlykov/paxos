@@ -6,7 +6,7 @@ type Node interface {
 }
 
 func (processor *Processor) Send(receiver *Processor, message Message) {
-	Send(processor, receiver, message)
+	network.Send(processor, receiver, message)
 }
 
 func (processor *Processor) Receive(sender *Processor, message Message) {

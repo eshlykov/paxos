@@ -4,6 +4,19 @@ type Message struct {
 	body interface{}
 }
 
-func Send(sender *Processor, receiver *Processor, message Message) {
+type Network interface {
+	Send(sender *Processor, receiver *Processor, message Message)
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+type SyncNetwork struct {
+}
+
+func (network *SyncNetwork) Send(sender *Processor, receiver *Processor, message Message) {
 	receiver.Receive(sender, message)
 }
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+var network = new(SyncNetwork)
