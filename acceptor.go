@@ -10,12 +10,12 @@ type AcceptorImpl struct {
 	acceptedProposal Proposal
 }
 
-func (processor *Processor) Promise(sender *Processor, maxBallotNumber BallotNumber, acceptedProposal Proposal) {
-	processor.Send(sender, Message{Promise{processor, processor.maxBallotNumber, processor.acceptedProposal}})
+func (processor *Processor) Promise(receiver *Processor, maxBallotNumber BallotNumber, acceptedProposal Proposal) {
+	processor.Send(receiver, Message{Promise{processor, processor.maxBallotNumber, processor.acceptedProposal}})
 }
 
-func (processor *Processor) Accept(sender *Processor) {
-	processor.Send(sender, Message{Ack{}})
+func (processor *Processor) Accept(receiver *Processor) {
+	processor.Send(receiver, Message{Ack{}})
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
