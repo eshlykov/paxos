@@ -3,8 +3,8 @@ package paxos
 import "sync"
 
 type Acceptor interface {
-	Promise(sender *Processor)
-	Accept(sender *Processor)
+	Promise(receiver *Processor, axBallotNumber BallotNumber, acceptedProposal Proposal)
+	Accept(receiver *Processor)
 }
 
 type AcceptorImpl struct {
@@ -16,8 +16,8 @@ type AcceptorImpl struct {
 func (processor *Processor) Promise(receiver *Processor, maxBallotNumber BallotNumber, acceptedProposal Proposal) {
 	processor.Send(receiver, Message{Promise{
 		processor,
-		processor.MaxBallotNumber(),
-		processor.AcceptedProposal(),
+		maxBallotNumber,
+		acceptedProposal,
 	}})
 }
 
@@ -25,34 +25,41 @@ func (processor *Processor) Accept(receiver *Processor) {
 	processor.Send(receiver, Message{Ack{}})
 }
 
-////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+func (processor *Processor) OnPrepare(sender *Processor, ballotNumber BallotNumber) {
+	var acceptedProposal Proposal
 
-func (acceptor *AcceptorImpl) MaxBallotNumber() BallotNumber {
-	acceptor.lockAcceptor.Lock()
-	defer acceptor.lockAcceptor.Unlock()
+	{
+		processor.lockAcceptor.Lock()
+		defer processor.lockAcceptor.Unlock()
 
-	return acceptor.maxBallotNumber
+		if !processor.maxBallotNumber.Less(ballotNumber) {
+			// Ignore old ballot numbers.
+			return
+		}
+
+		processor.maxBallotNumber = ballotNumber
+		acceptedProposal = processor.acceptedProposal
+	}
+
+	// Promise not to accept proposals with less ballot number.
+	processor.Promise(sender, ballotNumber, acceptedProposal)
 }
 
-func (acceptor *AcceptorImpl) SetMaxBallotNumber(ballotNumber BallotNumber) {
-	acceptor.lockAcceptor.Lock()
-	defer acceptor.lockAcceptor.Unlock()
+func (processor *Processor) OnPropose(sender *Processor, proposal Proposal) {
+	{
+		processor.lockAcceptor.Lock()
+		defer processor.lockAcceptor.Unlock()
 
-	acceptor.maxBallotNumber = ballotNumber
-}
+		if !processor.maxBallotNumber.LessOrEqual(proposal.ballotNumber) {
+			// Ignore old proposals.
+			return
+		}
 
-func (acceptor *AcceptorImpl) AcceptedProposal() Proposal {
-	acceptor.lockAcceptor.Lock()
-	defer acceptor.lockAcceptor.Unlock()
+		processor.acceptedProposal = proposal
+	}
 
-	return acceptor.acceptedProposal
-}
-
-func (acceptor *AcceptorImpl) SetAcceptedProposal(proposal Proposal) {
-	acceptor.lockAcceptor.Lock()
-	defer acceptor.lockAcceptor.Unlock()
-
-	acceptor.acceptedProposal = proposal
+	// Accept value with ballot number at least promised.
+	processor.Accept(sender)
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

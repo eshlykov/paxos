@@ -11,7 +11,7 @@ func (processor *Processor) Decide(value interface{}) interface{} {
 
 	for {
 		processor.Prepare()
-		if len(processor.Promises()) < quorumNumber {
+		if processor.PromiseCount() < quorumNumber {
 			continue
 		}
 

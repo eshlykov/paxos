@@ -33,6 +33,22 @@ func (processor *Processor) Propose() {
 	}
 }
 
+func (processor *Processor) OnPromise(promise Promise) {
+	processor.lockProposer.Lock()
+	defer processor.lockProposer.Unlock()
+
+	if promise.ballotNumber == processor.ballotNumber {
+		processor.promises = append(processor.promises, promise)
+	}
+}
+
+func (processor *Processor) OnAccept() {
+	processor.lockProposer.Lock()
+	defer processor.lockProposer.Unlock()
+
+	processor.acceptCount++
+}
+
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 func (proposer *ProposerImpl) AddAcceptors(acceptors []*Processor) {
@@ -56,16 +72,16 @@ func (proposer *ProposerImpl) TryUpdateValue() ([]Promise, BallotNumber, interfa
 
 	promiseIndex := -1
 	for i, promise := range proposer.promises {
-		// If proposer have promise with non-empty value,
-		// then some proposer was faster, and we should vote for its value
-		if promise.acceptedProposal.value != nil {
-			// Also, chosen value should have max ballot number
-			// Note: this ballot numbers are not less than current ballot number,
-			// otherwise acceptor would not send promise
-			if promiseIndex == -1 ||
-				proposer.promises[promiseIndex].acceptedProposal.ballotNumber.Less(promise.ballotNumber) {
-				promiseIndex = i
-			}
+		if promise.acceptedProposal.value == nil {
+			continue
+		}
+
+		// If proposer have promise with non-empty value,  then some proposer was faster,
+		// and we should vote for its value. Also, chosen value should have max ballot number.
+		// Note: this ballot numbers cannot be less than current ballot number,
+		// otherwise acceptor would not send promise.
+		if promiseIndex == -1 || proposer.promises[promiseIndex].acceptedProposal.ballotNumber.Less(promise.ballotNumber) {
+			promiseIndex = i
 		}
 	}
 
@@ -73,40 +89,19 @@ func (proposer *ProposerImpl) TryUpdateValue() ([]Promise, BallotNumber, interfa
 		proposer.value = proposer.promises[promiseIndex].acceptedProposal.value
 	}
 
-	// Otherwise, proposer will vote for its initial value
-	// Note: ballot number is not changed
+	// Otherwise, proposer will vote for its initial value.
+	// Note: ballot number is not changed.
 
 	return proposer.promises, proposer.ballotNumber, proposer.value
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-func (proposer *ProposerImpl) BallotNumber() BallotNumber {
+func (proposer *ProposerImpl) PromiseCount() int {
 	proposer.lockProposer.Lock()
 	defer proposer.lockProposer.Unlock()
 
-	return proposer.ballotNumber
-}
-
-func (proposer *ProposerImpl) AddPromise(promise Promise) {
-	proposer.lockProposer.Lock()
-	defer proposer.lockProposer.Unlock()
-
-	proposer.promises = append(proposer.promises, promise)
-}
-
-func (proposer *ProposerImpl) AddAccept() {
-	proposer.lockProposer.Lock()
-	defer proposer.lockProposer.Unlock()
-
-	proposer.acceptCount++
-}
-
-func (proposer *ProposerImpl) Promises() []Promise {
-	proposer.lockProposer.Lock()
-	defer proposer.lockProposer.Unlock()
-
-	return proposer.promises
+	return len(proposer.promises)
 }
 
 func (proposer *ProposerImpl) AcceptCount() int {
