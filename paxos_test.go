@@ -36,14 +36,14 @@ func runProcessors(processors []*Processor, proposed, decided chan interface{}) 
 	close(decided)
 }
 
-func validate(proposed, decieded chan interface{}) error {
+func validate(proposed, decided chan interface{}) error {
 	p := make(map[interface{}]bool)
 	for value := range proposed {
 		p[value] = true
 	}
 
 	d := make(map[interface{}]bool)
-	for value := range decieded {
+	for value := range decided {
 		if _, ok := p[value]; !ok {
 			return errors.New("validity is violated")
 		}
