@@ -10,27 +10,28 @@ func (processor *Processor) Send(receiver *Processor, message Message) {
 }
 
 func (processor *Processor) Receive(sender *Processor, message Message) {
-	switch data := message.body.(type) {
+	switch body := message.body.(type) {
 	// Acceptor
 	case BallotNumber:
-		if processor.maxBallotNumber.Less(data) {
-			processor.maxBallotNumber = data
+		maxBallotNumber := processor.MaxBallotNumber()
+		if maxBallotNumber.Less(body) {
+			processor.SetMaxBallotNumber(body)
 			// Promise not to accept proposals with less ballot number
-			processor.Promise(sender, processor.maxBallotNumber, processor.acceptedProposal)
+			processor.Promise(sender, body, processor.AcceptedProposal())
 		}
 	case Proposal:
-		if processor.maxBallotNumber.LessOrEqual(data.ballotNumber) {
-			processor.acceptedProposal = data
+		if processor.MaxBallotNumber().LessOrEqual(body.ballotNumber) {
+			processor.SetAcceptedProposal(body)
 			// Accept value with ballot number at least promised
 			processor.Accept(sender)
 		}
 	// Proposer
 	case Promise:
 		// Ignore old messages
-		if data.ballotNumber == processor.ballotNumber {
-			processor.promises = append(processor.promises, data)
+		if body.ballotNumber == processor.BallotNumber() {
+			processor.AddPromise(body)
 		}
 	case Ack:
-		processor.acceptCount++
+		processor.AddAccept()
 	}
 }

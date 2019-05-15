@@ -1,5 +1,7 @@
 package paxos
 
+import "sync"
+
 type Proposer interface {
 	Prepare()
 	Propose()
@@ -12,6 +14,7 @@ type ProposerImpl struct {
 	value        interface{}
 	promises     []Promise
 	acceptCount  int
+	lockProposer sync.Mutex
 }
 
 func (processor *Processor) Prepare() {
@@ -20,18 +23,16 @@ func (processor *Processor) Prepare() {
 	for _, acceptor := range processor.acceptors {
 		processor.Send(acceptor, Message{processor.ballotNumber})
 	}
-
-	//time.Sleep(1000 * time.Millisecond)
 }
 
 func (processor *Processor) Propose() {
 	processor.TryUpdateValue()
 
-	for _, promise := range processor.promises {
+	promises := processor.Promises()
+
+	for _, promise := range promises {
 		processor.Send(promise.acceptor, Message{Proposal{processor.ballotNumber, processor.value}})
 	}
-
-	//time.Sleep(1000 * time.Millisecond)
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -41,12 +42,18 @@ func (proposer *ProposerImpl) AddAcceptors(acceptors []*Processor) {
 }
 
 func (proposer *ProposerImpl) CountUpBallotNumber() {
+	proposer.lockProposer.Lock()
+	defer proposer.lockProposer.Unlock()
+
 	proposer.ballotNumber = proposer.ballotNumber.Next()
-	proposer.promises = make([]Promise, 0)
+	proposer.promises = make([]Promise, 0, 0)
 	proposer.acceptCount = 0
 }
 
 func (proposer *ProposerImpl) TryUpdateValue() {
+	proposer.lockProposer.Lock()
+	defer proposer.lockProposer.Unlock()
+
 	promiseIndex := -1
 	for i, promise := range proposer.promises {
 		// If proposer have promise with non-empty value,
@@ -65,8 +72,39 @@ func (proposer *ProposerImpl) TryUpdateValue() {
 	if promiseIndex != -1 {
 		proposer.value = proposer.promises[promiseIndex].acceptedProposal.value
 	}
+
 	// Otherwise, proposer will vote for its initial value
 	// Note: ballot number is not changed
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+func (proposer *ProposerImpl) BallotNumber() BallotNumber {
+	proposer.lockProposer.Lock()
+	defer proposer.lockProposer.Unlock()
+
+	return proposer.ballotNumber
+}
+
+func (proposer *ProposerImpl) AddPromise(promise Promise) {
+	proposer.lockProposer.Lock()
+	defer proposer.lockProposer.Unlock()
+
+	proposer.promises = append(proposer.promises, promise)
+}
+
+func (proposer *ProposerImpl) AddAccept() {
+	proposer.lockProposer.Lock()
+	defer proposer.lockProposer.Unlock()
+
+	proposer.acceptCount++
+}
+
+func (proposer *ProposerImpl) Promises() []Promise {
+	proposer.lockProposer.Lock()
+	defer proposer.lockProposer.Unlock()
+
+	return proposer.promises
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
