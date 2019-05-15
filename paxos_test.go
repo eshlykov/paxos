@@ -79,7 +79,7 @@ func TestPaxosStressTest(testing *testing.T) {
 		for _, processorCount := range []int{1, 3, 5} {
 			for i := 0; i < 8; i++ {
 				if ok := testPaxos(network, processorCount); ok != nil {
-					testing.Errorf("StressTest(network: %v, processorCount: %d): %s",
+					testing.Errorf("StressTest(network: %T, processorCount: %d): %s",
 						network, processorCount, ok.Error())
 				}
 			}
